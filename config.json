@@ -1,0 +1,129 @@
+{
+  "rule_priority": {
+    "BIN001": 0,
+    "BIN002": 0,
+    "D000": 1,
+    "D001": 1,
+    "TOT001": 2,
+    "NEG001": 2
+  },
+  "require_issue_date": true,
+  "require_date_severity": "ERROR",
+  "allow_future_days": 0,
+  "date_tolerance_minutes": 0,
+  "date_future_severity": "ERROR",
+  "strict_bin": true,
+  "header_fuzzy_threshold": 0.82,
+  "totals": {
+    "prefer_total": "gross",
+    "tolerance_abs": 0.5,
+    "tolerance_rel": 0.0005
+  },
+  "aliases": {
+    "buyer_bin": [
+      "бин покупателя",
+      "покупатель бин",
+      "покупатель: бин",
+      "iin/bin покупателя",
+      "иин/бин покупателя",
+      "iin/bin (buyer)",
+      "customer bin",
+      "buyer bin",
+      "recipient bin",
+      "бин получателя",
+      "получатель: бин",
+      "жсн/бсн покупателя",
+      "жсн/бсн получателя"
+    ],
+    "supplier_bin": [
+      "бин поставщика",
+      "поставщик бин",
+      "поставщик: бин",
+      "iin/bin поставщика",
+      "иин/бин поставщика",
+      "supplier bin",
+      "seller bin",
+      "бин продавца",
+      "продавец бин",
+      "жсн/бсн поставщика"
+    ],
+    "issue_date": [
+      "дата счета",
+      "дата счёта",
+      "дата выписки",
+      "дата выписки счета",
+      "дата счета-фактуры",
+      "дата счёт-фактуры",
+      "дата выставления",
+      "дата выставления счета",
+      "invoice date",
+      "date of invoice",
+      "document date",
+      "дата документа",
+      "счет от",
+      "счёт от",
+      "сф от",
+      "дата сф",
+      "дата счет-фактуры"
+    ],
+    "turnover_date": [
+      "дата совершения оборота",
+      "дата совершения оборота по реализации",
+      "дата отгрузки",
+      "дата реализации",
+      "дата поставки",
+      "дата передачи товаров",
+      "дата выполнения работ",
+      "дата оказания услуг",
+      "shipment date",
+      "delivery date",
+      "date of supply",
+      "date of turnover"
+    ],
+    "total_net": [
+      "итого без ндс",
+      "без ндс",
+      "subtotal",
+      "net total",
+      "subtotal (без ндс)"
+    ],
+    "total_vat": [
+      "сумма ндс",
+      "ндс",
+      "vat amount",
+      "tax amount"
+    ],
+    "total_gross": [
+      "всего с ндс",
+      "итого с ндс",
+      "к оплате",
+      "grand total",
+      "total with vat"
+    ],
+    "total_amount": [
+      "итоговая сумма",
+      "итого",
+      "всего",
+      "всего к оплате",
+      "total",
+      "total amount",
+      "amount due",
+      "grand total"
+    ]
+  },
+  "markers": {
+    "buyer": [
+      "покупатель",
+      "customer",
+      "buyer",
+      "получатель",
+      "recipient"
+    ],
+    "supplier": [
+      "поставщик",
+      "supplier",
+      "seller",
+      "продавец"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "esf_template": {
+    "metadata": {
+      "document": "ЭСФ",
+      "normative_base": "Приказ № 370 от 22.04.2019",
+      "last_updated": "2024-09-11",
+      "source_url": "https://adilet.zan.kz/rus/docs/V1900018583"
+    },
+    "required_sections": [
+      "Раздел А",
+      "Раздел B",
+      "Раздел C",
+      "Раздел E",
+      "Раздел F",
+      "Раздел G",
+      "Раздел L"
+    ],
+    "key_fields": {
+      "supplier_BIN": {
+        "pattern": "\\b\\d{12}\\b",
+        "required": true,
+        "description": "БИН поставщика — 12 цифр"
+      },
+      "recipient_BIN": {
+        "pattern": "\\b\\d{12}\\b",
+        "required": true,
+        "description": "БИН получателя — 12 цифр"
+      },
+      "date_issue": {
+        "pattern": "\\d{2}\\.\\d{2}\\.\\d{4}",
+        "required": true,
+        "description": "Дата выписки ЭСФ"
+      },
+      "total_amount": {
+        "pattern": "\\b\\d{1,3}(?:[ \\u00A0]\\d{3})*(?:[.,]\\d{2})?\\b",
+        "required": true,
+        "description": "Общая сумма по документу"
+      },
+      "signature_ECP": {
+        "pattern": "(?i)эцп",
+        "required": true,
+        "description": "Наличие ЭЦП (электронной цифровой подписи)"
+      }
+    },
+    "optional_fields": {
+      "GTIN_code": {
+        "pattern": "\\b\\d{14}\\b",
+        "required": false,
+        "description": "Код товара GTIN — необязательный"
+      },
+      "virtual_warehouse": {
+        "pattern": "(?i)виртуальный склад",
+        "required": false,
+        "description": "Отметка виртуального склада при применении механизма прослеживаемости"
+      }
+    },
+    "validation_rules": [
+      {
+        "name": "section_sequence_check",
+        "description": "Проверка, что разделы идут в рекомендованной последовательности",
+        "enabled": true
+      },
+      {
+        "name": "binary_fields_presence",
+        "description": "БИН-поля должны быть заполнены",
+        "enabled": true
+      },
+      {
+        "name": "signature_check",
+        "description": "Наличие ЭЦП должно быть указано",
+        "enabled": true
+      },
+      {
+        "name": "format_detection",
+        "description": "Документ распознан как ЭСФ по наличию ключевых признаков",
+        "enabled": true
+      }
+    ]
+  }
+}
