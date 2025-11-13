@@ -1,0 +1,11 @@
+# ULYULYU CHECKER — Report Template (v1.5, Tkinter skin)
+# Symbols
+STATUS_OK=✅
+STATUS_ERR=❌
+STATUS_WRN=⚠️
+STATUS_OPT=⚪
+# Decor
+SEP=────────────────────────────────────
+HEADER=📄 Отчёт по документу
+# Footer label
+SUMMARY=ИТОГ: Проверено {total} | Ошибки: {errors} | Предупреждения: {warnings}

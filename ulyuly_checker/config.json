@@ -1,0 +1,58 @@
+{
+  "__comment_2025-11-08": "reason: добавлена карта групп и флаг компактного вывода в user-режиме",
+  "__comment_2025-11-10": "reason: добавлен параметр bin_rules.allow_equal_bins и расширены приоритеты SUM для TOT001 и NEG001",
+  "__comment_2025-11-11": "reason: добавлены aliases для issue_date и total_amount (распознавание дат и сумм в PDF/Excel)",
+
+  "ui_overlay_enabled": true,
+  "debug_show_values": true,
+
+  "mode": "user",
+  "show_group_details_in_user_mode": false,
+
+  "bin_rules": {
+    "bin_checksum_enabled": true,
+    "allow_equal_bins": false
+  },
+
+  "groups": {
+    "BIN":  { "title": "Идентификаторы контрагентов", "order": 0, "prefixes": ["BIN"] },
+    "DATE": { "title": "Даты документа",              "order": 1, "prefixes": ["D"] },
+    "SUM":  { "title": "Суммы и итоги",               "order": 2, "prefixes": ["TOT", "NEG"] }
+  },
+
+  "group_priorities": {
+    "BIN":  ["BIN001", "BIN002", "BIN007", "BIN012"],
+    "DATE": ["D000", "D001"],
+    "SUM":  ["TOT001", "NEG001"]
+  },
+
+  "rule_priority": {
+    "BIN001": 0,
+    "BIN002": 0,
+    "BIN007": 0,
+    "BIN012": 0,
+    "D000": 1,
+    "D001": 1,
+    "TOT001": 2,
+    "NEG001": 2
+  },
+
+  "require_issue_date": true,
+  "require_date_severity": "ERROR",
+
+  "keywords": {
+    "buyer": ["покупатель", "customer", "buyer", "получатель", "recipient"],
+    "supplier": ["поставщик", "supplier", "seller", "продавец"]
+  },
+
+  "aliases": {
+    "issue_date": [
+      "дата", "дата выписки", "дата составления", "дата документа",
+      "document date", "invoice date", "issue date", "от", "Дата", "Дата выписки", "Дата составления"
+    ],
+    "total_amount": [
+      "итого", "всего", "итого с ндс", "total", "total amount",
+      "amount total", "Всего с НДС", "Сумма документа", "Total", "Итог", "Amount"
+    ]
+  }
+}
