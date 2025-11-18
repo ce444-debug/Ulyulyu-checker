@@ -1,7 +1,9 @@
 # ============================================================
 # validator.py — ULYULYU CHECKER v2.7.3
-# 2025-11-12: reason: убраны «…», согласована сигнатура validate_document(content, template=None),
-#                     конвертация правил rules_engine → GUI (ValidationResult), сортировка по приоритету.
+# 2025-11-12: reason: согласована сигнатура validate_document(...)
+# [2025-11-18] refactor(mini): подключён core.utils.normalize_keys()
+#                    (канон полей) и load_config() (единая точка).
+#                    Поведение валидации не менял.
 # ============================================================
 
 import os
@@ -9,15 +11,19 @@ import json
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 
-# 2025-11-12: абсолютный импорт, чтобы не падать при пакетах
-from core import rules_engine
+from . import rules_engine
+from . import utils  # [2025-11-18] единые утилиты
 
 # --------------------------- конфиг ---------------------------
 def _project_root() -> str:
-    # core/ → ulyuly_checker/
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def _load_config() -> Dict[str, Any]:
+    # [2025-11-18] используем utils.load_config() (кэш)
+    cfg = utils.load_config()
+    if cfg:
+        return cfg
+    # запасной путь (совместимость)
     candidates = [
         os.path.join(_project_root(), "config.json"),
         os.path.join(os.path.dirname(__file__), "config.json"),
@@ -64,13 +70,14 @@ def _compose_message(item: Dict[str, Any]) -> str:
 # --------------------------- API ---------------------------
 def validate_document(content: Dict[str, Any], template: Dict[str, Any] | None = None) -> List[ValidationResult]:
     """
-    content — распарсенные поля (supplier_BIN, recipient_BIN, issue_date, ...).
-    template — не используется в v2.7, но оставлен для обратной совместимости с main.py
+    content — распарсенные поля (supplier_BIN/recipient_BIN/issue_date/… или их канон).
+    template — не используется в v2.7, оставлено для совместимости.
     """
+    # [2025-11-18] refactor(mini): приводим ключи к канону, ISO-дата
+    content = utils.normalize_keys(content or {})
+
     raw_items = rules_engine.run_all_rules(content)
 
-    # Валидация возвращает список словарей вида:
-    # { code, level, user:{title,description,recommendation}, value? }
     out: List[Tuple[int, ValidationResult]] = []
     for it in raw_items:
         code  = str(it.get("code","")).strip()
@@ -78,7 +85,6 @@ def validate_document(content: Dict[str, Any], template: Dict[str, Any] | None =
         msg   = _compose_message(it)
         out.append((_priority_for(code), ValidationResult(code=code, level=level, message=msg)))
 
-    # сортируем по приоритету, затем по коду для стабильности
     out.sort(key=lambda t: (t[0], t[1].code))
     return [x[1] for x in out]
 

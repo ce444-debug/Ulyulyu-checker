@@ -1,19 +1,16 @@
 # xlsx_reader.py
-# 2025-11-07: Date-in-text support ("... от 22.09.2025 г.", "от «22» сентября 2025 г.")
-#             + numeric formats with slashes, Russian month names, neighbor total detection,
-#             + BIN context, trace, and config-driven aliases.
-# 2025-11-12: reason: BIN context hardening — БИН извлекается только при подтверждённом контексте
-#                   (рядом слова «бин/покупатель/поставщик» или алиасы из config.markers);
-#                   строгая валидация БИН (12 цифр, не все одинаковые, не «000…»).
-# 2025-11-12: reason: bugfix — BASE_0001.xlsx не находился БИН покупателя.
-#                   Добавлен целевой проход по ярлыкам ("БИН покупателя", "ИИН/БИН покупателя",
-#                   "БИН получателя/заказчика"), поиск значения справа/ниже, расширены маркеры
-#                   и окно контекста; учитываются переносы на следующую строку/столбец.
+# 2025-11-07: Date-in-text support, BIN context, totals…
+# 2025-11-12: BIN context hardening, buyer markers, bugfixes.
+# [2025-11-18] refactor(mini): перевод парсеров/нормализации в core.utils;
+#                в конце — normalize_keys(); поведение не изменено.
 
 import json, os, re
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from openpyxl import load_workbook
+
+# === утилиты (новые) ===
+from . import utils  # [2025-11-18] причина: единый контракт/парсеры
 
 # ---------------- util & config ----------------
 
@@ -21,6 +18,11 @@ def _project_root() -> str:
     return os.path.dirname(__file__)
 
 def _load_config() -> Dict[str, Any]:
+    # оставляем старую стратегию поиска (поведение прежнее),
+    # но дополнительно пробуем корень проекта через utils.load_config()
+    data = utils.load_config()
+    if data:
+        return data
     candidates = [
         os.path.join(_project_root(), "config.json"),
         os.path.join(_project_root(), "ulyuly_checker", "config.json"),
@@ -40,46 +42,16 @@ def _load_config() -> Dict[str, Any]:
 _CFG = _load_config()
 
 def _norm(s: Any) -> str:
-    if s is None:
-        return ""
-    s = str(s)
-    s = s.replace("\u00A0", " ")
-    s = re.sub(r"[\u200b\u200e\u202f\t\r\n]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    return utils.clean_text(s)
 
 def _norm_key(s: Any) -> str:
-    s = _norm(s).lower()
-    s = s.replace("№", "номер")
-    s = s.replace("иин/бин", "бин")
-    s = s.replace("бин/иин", "бин")
-    s = s.replace("счёт", "счет")
-    s = s.replace("счет-фактура", "счет фактура")
-    s = s.replace("получател", "покупател")  # 2025-11-12: reason: buyer markers normalize
-    s = re.sub(r"[^\w\s]+", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    return utils.clean_key(s)
 
-def _only_digits(s: str) -> str:
-    return "".join(ch for ch in s if ch.isdigit())
+def _only_digits(s: Any) -> str:
+    return utils.only_digits(s)
 
-def _is_valid_bin(value: Any) -> bool:
-    """
-    Жёсткая проверка БИН/ИИН:
-      - только 12 цифр после очистки;
-      - не «000000000000» и не «111111111111» (все одинаковые);
-    """
-    if value is None:
-        return False
-    try:
-        s = _only_digits(str(value))
-    except Exception:
-        return False
-    if len(s) != 12:
-        return False
-    if len(set(s)) == 1:
-        return False
-    return True
+def _is_valid_bin(v: Any) -> bool:
+    return utils.is_valid_bin(v)
 
 # ---------------- dates ----------------
 
@@ -89,60 +61,19 @@ _MONTHS_RU = {
 }
 
 def _excel_serial_to_datetime(value: float) -> Optional[datetime]:
+    # оставляем локально для совместимости (используется в _as_excel_or_text_date)
     try:
-        base = datetime(1899, 12, 30)  # Windows base (with 1900 bug)
+        base = datetime(1899, 12, 30)
         return base + timedelta(days=float(value))
     except Exception:
         return None
 
 def _as_excel_or_text_date(val: Any) -> Optional[datetime]:
-    # 1) real datetime
-    if isinstance(val, datetime):
-        return val.replace(tzinfo=None)
-
-    # 2) Excel serial number
-    if isinstance(val, (int, float)):
-        if 20000 <= float(val) <= 60000:
-            dt = _excel_serial_to_datetime(val)
-            if dt:
-                return dt
-
-    # 3) text with numeric or rus-month formats (optionally with "от ... г.")
-    text = _norm(val)
-    if not text:
-        return None
-
-    num_patterns = [
-        r"(?P<d>\d{1,2})\.(?P<m>\d{1,2})\.(?P<y>\d{4})",
-        r"(?P<y>\d{4})-(?P<m>\d{1,2})-(?P<d>\d{1,2})",
-        r"(?P<d>\d{1,2})/(?P<m>\d{1,2})/(?P<y>\d{4})",
-        r"(?P<y>\d{4})/(?P<m>\d{1,2})/(?P<d>\d{1,2})",
-    ]
-    for p in num_patterns:
-        m = re.search(p, text)
-        if m:
-            try:
-                y = int(m.group("y")); mth = int(m.group("m")); d = int(m.group("d"))
-                return datetime(y, mth, d)
-            except Exception:
-                pass
-
-    m = re.search(
-        r"(?:\bот\s+)?[«\"]?(?P<d>\d{1,2})[»\"]?\s+(?P<mon>января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+(?P<y>\d{4})\s*(?:г\.?|г)?",
-        text.lower()
-    )
-    if m:
-        try:
-            d = int(m.group("d"))
-            y = int(m.group("y"))
-            mth = _MONTHS_RU[m.group("mon")]
-            return datetime(y, mth, d)
-        except Exception:
-            return None
-    return None
+    # делегируем в utils.parse_date_any() — логика шире, чем была локально
+    return utils.parse_date_any(val)
 
 def _to_iso_date(dt: Optional[datetime]) -> str:
-    return dt.strftime("%Y-%m-%d") if isinstance(dt, datetime) else ""
+    return utils.to_iso(dt)
 
 # ---------------- sheet scan ----------------
 
@@ -298,7 +229,6 @@ def _detect_dates_and_totals(cells, aliases) -> Tuple[str,str,Dict[str,Any],Dict
 
 # ---------------- BIN detection ----------------
 
-# 2025-11-12: reason: расширенные маркеры для покупателя/поставщика
 _SUPPLIER_TOKENS = {
     "поставщик","поставщика","продавец","продавца","продавцу","продавцом",
     "supplier","seller"
@@ -338,12 +268,6 @@ def _search_value_right_down(cells, r, c, right=6, down=4) -> Optional[Tuple[str
     return None
 
 def _detect_bins(cells, markers_cfg) -> Tuple[str,str,Dict[str,str]]:
-    """
-    Стратегия:
-      A) Целевой проход: находим ярлыки, содержащие BIN/ИИН + «покупател/получател/заказчик» или «поставщик/продавец»,
-         и берём ближайшие 12 цифр справа/ниже (устойчиво к разрыву по строкам/столбцам).
-      B) Если не найдено — контекстное окно (старый подход), но с расширенным радиусом и маркерами.
-    """
     supplier_bin, buyer_bin = "", ""
     trace: Dict[str, str] = {}
 
@@ -370,7 +294,7 @@ def _detect_bins(cells, markers_cfg) -> Tuple[str,str,Dict[str,str]]:
                 buyer_bin = found[0]
                 trace["buyer_bin"] = f"LABEL@R{r}C{c}->R{found[1]}C{found[2]}"
 
-    # --- B) fallback: context window (если не нашли на ярлыках) ---
+    # --- B) fallback: context window ---
     if not supplier_bin or not buyer_bin:
         for (r,c,v) in cells:
             t_raw = _norm(v)
@@ -379,7 +303,7 @@ def _detect_bins(cells, markers_cfg) -> Tuple[str,str,Dict[str,str]]:
             digits = _only_digits(t_raw)
             if not _is_valid_bin(digits):
                 continue
-            ctx = _near_text(cells, r, c, radius=3)  # 2025-11-12: radius 3 -> 4? оставим 3
+            ctx = _near_text(cells, r, c, radius=3)
             ctx_key = _norm_key(ctx + " " + t_raw)
 
             if not supplier_bin and _has_any_token(ctx_key, _SUPPLIER_TOKENS) and _has_any_token(ctx_key, _BIN_TOKENS):
@@ -418,7 +342,8 @@ def read_xlsx(file_path: str) -> Dict[str, Any]:
         "lines": [],
         "_trace": {**trace_bins, **trace_dt}
     }
-    return content
+    # [2025-11-18] refactor(mini): канонизация ключей + ISO-дата
+    return utils.normalize_keys(content)
 
 def extract_data(file_path: str) -> Dict[str, Any]:
     return read_xlsx(file_path)

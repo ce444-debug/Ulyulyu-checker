@@ -1,35 +1,12 @@
 {
-  "__comment_2025-11-08": "reason: добавлена карта групп и флаг компактного вывода в user-режиме",
-  "__comment_2025-11-10": "reason: добавлен параметр bin_rules.allow_equal_bins и расширены приоритеты SUM для TOT001 и NEG001",
-  "__comment_2025-11-11": "reason: добавлены aliases для issue_date и total_amount (распознавание дат и сумм в PDF/Excel)",
+  "__comment_2025-11-12": "reason: enable overlay & debug values for Inspector Edition (Logic v2.6)",
 
   "ui_overlay_enabled": true,
   "debug_show_values": true,
 
-  "mode": "user",
-  "show_group_details_in_user_mode": false,
-
-  "bin_rules": {
-    "bin_checksum_enabled": true,
-    "allow_equal_bins": false
-  },
-
-  "groups": {
-    "BIN":  { "title": "Идентификаторы контрагентов", "order": 0, "prefixes": ["BIN"] },
-    "DATE": { "title": "Даты документа",              "order": 1, "prefixes": ["D"] },
-    "SUM":  { "title": "Суммы и итоги",               "order": 2, "prefixes": ["TOT", "NEG"] }
-  },
-
-  "group_priorities": {
-    "BIN":  ["BIN001", "BIN002", "BIN007", "BIN012"],
-    "DATE": ["D000", "D001"],
-    "SUM":  ["TOT001", "NEG001"]
-  },
-
   "rule_priority": {
     "BIN001": 0,
     "BIN002": 0,
-    "BIN007": 0,
     "BIN012": 0,
     "D000": 1,
     "D001": 1,
@@ -39,20 +16,127 @@
 
   "require_issue_date": true,
   "require_date_severity": "ERROR",
+  "allow_future_days": 0,
+  "date_tolerance_minutes": 0,
+  "date_future_severity": "ERROR",
 
-  "keywords": {
-    "buyer": ["покупатель", "customer", "buyer", "получатель", "recipient"],
-    "supplier": ["поставщик", "supplier", "seller", "продавец"]
+  "strict_bin": { "enabled": false },
+
+  "__comment_2025-11-13_a": "reason: enable BIN checksum (BIN012) and set equal-BIN policy for BIN007",
+  "bin_rules": {
+    "bin_checksum_enabled": true,
+    "allow_equal_bins": false
+  },
+
+  "header_fuzzy_threshold": 0.82,
+
+  "__comment_2025-11-13_b": "reason: totals settings & labels for Russian ESF tables ('Всего стоимость реализации', 'Всего к оплате', etc.)",
+  "totals": {
+    "prefer_total": "gross",
+    "tolerance_abs": 0.5,
+    "tolerance_rel": 0.0005,
+
+    "labels": [
+      "Итого",
+      "Итого\\s*с\\s*НДС",
+      "Всего",
+      "Всего\\s*к\\s*оплате",
+      "К\\s*оплате",
+      "Всего\\s*стоимость\\s*реализации",
+      "Total",
+      "Grand\\s*Total"
+    ],
+    "max_gap": 140,
+    "table_like": true
   },
 
   "aliases": {
+    "buyer_bin": [
+      "бин покупателя",
+      "покупатель бин",
+      "покупатель: бин",
+      "iin/bin покупателя",
+      "иин/бин покупателя",
+      "iin/bin (buyer)",
+      "customer bin",
+      "buyer bin",
+      "recipient bin",
+      "бин получателя",
+      "получатель: бин",
+      "жсн/бсн покупателя",
+      "жсн/бсн получателя"
+    ],
+    "supplier_bin": [
+      "бин поставщика",
+      "поставщик бин",
+      "поставщик: бин",
+      "iin/bin поставщика",
+      "иин/бин поставщика",
+      "iin/bin (supplier)",
+      "seller bin",
+      "supplier bin",
+      "бин продавца",
+      "продавец: бин"
+    ],
     "issue_date": [
-      "дата", "дата выписки", "дата составления", "дата документа",
-      "document date", "invoice date", "issue date", "от", "Дата", "Дата выписки", "Дата составления"
+      "дата выписки",
+      "дата выставления",
+      "document date",
+      "issue date",
+      "invoice date",
+      "дата составления",
+      "дата"
+    ],
+    "document_date": [
+      "дата документа",
+      "дата составления документа",
+      "document date"
+    ],
+    "total_net": [
+      "итого без ндс",
+      "всего без ндс",
+      "total (net)",
+      "amount (net)"
+    ],
+    "total_vat": [
+      "ндс сумма",
+      "сумма ндс",
+      "vat amount",
+      "tax amount"
+    ],
+    "total_gross": [
+      "всего стоимость реализации",
+      "всего с ндс",
+      "итого с ндс",
+      "total (gross)",
+      "amount (gross)"
     ],
     "total_amount": [
-      "итого", "всего", "итого с ндс", "total", "total amount",
-      "amount total", "Всего с НДС", "Сумма документа", "Total", "Итог", "Amount"
+      "итого к оплате",
+      "к оплате",
+      "всего к оплате",
+      "total amount",
+      "amount total",
+      "итоговая сумма",
+      "сумма документа",
+      "итог"
+    ]
+  },
+
+  "markers": {
+    "buyer": [ "покупатель", "customer", "buyer", "получатель", "recipient" ],
+    "supplier": [ "поставщик", "supplier", "seller", "продавец" ]
+  },
+
+  "__comment_2025-11-13_c": "reason: add sections.esf_headers (detect ESF section; support «СЧЕТ-ФАКТУРА» без «электронный» + mojibake fallbacks)",
+  "sections": {
+    "prefer_esf_section": true,
+    "esf_headers": [
+      "СЧ[ЕЁ]Т[-\\s]?ФАКТУРА",
+      "\\bЭСФ\\b",
+      "Invoice\\s*\\(VAT\\)|Tax\\s*Invoice|Electronic\\s*Invoice",
+      "Ñ×[ÅE]Ò[-\\s]?ÔÀÊÒÓÐÀ",
+      "ÝËÅÊÒÐÎÍÍÛÉ\\s+Ñ×[ÅE]Ò[-\\s]?ÔÀÊÒÓÐÀ"
     ]
   }
 }
